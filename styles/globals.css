@@ -1,0 +1,18 @@
+/*
+ * OBRIGATÓRIO:
+ * Estas três linhas DEVEM ser as primeiras coisas neste arquivo.
+ * Elas injetam todos os estilos base do Tailwind.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Seus estilos globais personalizados (como o fundo)
+ * devem vir DEPOIS das importações do Tailwind.
+*/
+body {
+  background-color: #1A1A1A; /* Cor 'dribla-graphite' */
+  color: #F3F4F6; /* Cor 'dribla-light' */
+}
+
