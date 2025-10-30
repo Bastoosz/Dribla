@@ -1,18 +1,35 @@
-/*
- * OBRIGATÓRIO:
- * Estas três linhas DEVEM ser as primeiras coisas neste arquivo.
- * Elas injetam todos os estilos base do Tailwind.
-*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Seus estilos globais personalizados (como o fundo)
- * devem vir DEPOIS das importações do Tailwind.
-*/
 body {
-  background-color: #1A1A1A; /* Cor 'dribla-graphite' */
-  color: #F3F4F6; /* Cor 'dribla-light' */
+  background-color: #1A1A1A; /* Fundo Dribla Graphite */
+  color: #F3F4F6; /* Texto Dribla Light */
+}
+
+/* === ADICIONE ESTAS CLASSES ABAIXO === */
+
+@layer components {
+  /* Classe reutilizável para inputs */
+  .input-dribla {
+    @apply block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm shadow-sm
+           placeholder-gray-400 
+           focus:outline-none focus:border-dribla-green focus:ring-1 focus:ring-dribla-green;
+  }
+
+  /* Classe reutilizável para labels */
+  .label-dribla {
+    @apply block text-sm font-medium text-gray-300 mb-1;
+  }
+
+  /* Classe reutilizável para botão primário */
+  .btn-primary {
+      @apply px-4 py-2 rounded-lg bg-dribla-green text-gray-900 font-semibold transition duration-200 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center;
+  }
+
+  /* Classe reutilizável para botão secundário */
+  .btn-secondary {
+      @apply px-4 py-2 rounded-lg bg-gray-600 text-white transition duration-200 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
 }
 

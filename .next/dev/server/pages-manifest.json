@@ -1,0 +1,9 @@
+{
+  "/": "pages/index.js",
+  "/_app": "pages/_app.js",
+  "/_document": "pages/_document.js",
+  "/elenco": "pages/elenco.js",
+  "/financeiro": "pages/financeiro.js",
+  "/home-acao": "pages/home-acao.js",
+  "/login": "pages/login.js"
+}
