@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Windows%2011/Desktop/Dribla/dribla_frontend/pages/_app.tsx"],"sourcesContent":["import type { AppProps } from 'next/app';\r\n\r\n// IMPORTANTE: Esta linha importa o CSS global (do arquivo acima)\r\n// para toda a aplicação.\r\nimport '../styles/globals.css';\r\n\r\n// Este é o componente padrão do Next.js\r\nfunction MyApp({ Component, pageProps }: AppProps) {\r\n  return <Component {...pageProps} />;\r\n}\r\n\r\nexport default MyApp;\r\n"],"names":[],"mappings":";;;;;;;AAMA,wCAAwC;AACxC,SAAS,MAAM,EAAE,SAAS,EAAE,SAAS,EAAY;IAC/C,qBAAO,qKAAC;QAAW,GAAG,SAAS;;;;;;AACjC;uCAEe","debugId":null}}]
+}

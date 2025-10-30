@@ -1,0 +1,3 @@
+[00:00:06.705] Server  LOG      ✓ Ready in 5.1s
+[00:00:11.451] Server  LOG      ○ Compiling / ...
+[00:00:31.349] Browser WARN    Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.

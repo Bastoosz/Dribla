@@ -1,16 +1,20 @@
+// pages/home-acao.tsx
+
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Layout from '../components/Layout';
-import { supabase } from '../lib/supabaseClient';
+import Layout from 'components/Layout';
+import { supabase } from 'lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Loader2, DollarSign, Users, AlertTriangle, Clock } from 'lucide-react';
+import { Loader2, Users, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import type { Aluno } from 'types/aluno.ts';
 
 // Tipagem para os dados do Dashboard
 interface DashboardData {
   atrasadosCount: number;
   atrasadosValorTotal: number;
   proximosCount: number;
+  pagosCount: number;
   totalAlunos: number;
   planoAtual: 'free' | 'vip' | 'premium';
   limiteAlunos: number;
@@ -23,11 +27,20 @@ const HomeAcao: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Define as datas para as queries dinâmicas
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); 
+    const hojeISO = hoje.toISOString().slice(0, 10);
+
+    const cincoDias = new Date(hoje);
+    cincoDias.setDate(hoje.getDate() + 5);
+    const cincoDiasFrenteISO = cincoDias.toISOString().slice(0, 10);
+
+
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
 
-      // 1. Pega o Usuário (Auth)
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
@@ -36,71 +49,77 @@ const HomeAcao: React.FC = () => {
       }
 
       try {
-        // --- Executar todas as queries em paralelo ---
         const [
           treinadorPromise,
           atrasadosPromise,
           proximosPromise,
+          pagosPromise,
           totalAlunosPromise
         ] = await Promise.all([
-          // Busca dados do Treinador
+          // 1. Busca dados do Treinador
           supabase
             .from('treinadores')
             .select('plano_atual, limite_alunos')
             .eq('id', user.id)
             .single(),
           
-          // Busca Atrasados (Contagem e Soma)
+          // 2. Busca Atrasados (LÓGICA CORRIGIDA)
           supabase
             .from('alunos')
-            .select('valor_mensalidade', { count: 'exact' }) // Pega valor para somar e a contagem
+            .select('valor_mensalidade', { count: 'exact' })
             .eq('id_treinador', user.id)
-            .eq('status_mensalidade', 'vencida'),
+            .eq('status_mensalidade', 'pendente')
+            .lt('data_vencimento_mensalidade', hojeISO),
 
-          // Busca Próximos (Apenas Contagem)
+          // 3. Busca Próximos (LÓGICA CORRIGIDA)
           supabase
             .from('alunos')
-            .select('*', { count: 'exact', head: true }) // head: true só conta, não retorna dados
+            .select('*', { count: 'exact', head: true })
             .eq('id_treinador', user.id)
-            .eq('status_mensalidade', 'proximo'),
+            .eq('status_mensalidade', 'pendente')
+            .gte('data_vencimento_mensalidade', hojeISO)
+            .lte('data_vencimento_mensalidade', cincoDiasFrenteISO),
 
-          // Busca Total de Alunos (Apenas Contagem)
+          // 4. Busca Em Dia (Pagos OU Pendentes no futuro)
+          supabase
+            .from('alunos')
+            .select('*', { count: 'exact', head: true }) 
+            .eq('id_treinador', user.id)
+            .or(
+              `status_mensalidade.eq.pago,and(status_mensalidade.eq.pendente,data_vencimento_mensalidade.gt.${cincoDiasFrenteISO})`
+            ),
+
+          // 5. Busca Total de Alunos
           supabase
             .from('alunos')
             .select('*', { count: 'exact', head: true }) 
             .eq('id_treinador', user.id),
         ]);
 
-        // --- Processar os Resultados ---
-
-        // Treinador
+        // Processamento...
         if (treinadorPromise.error) throw new Error("Erro ao buscar dados do plano.");
-        const treinadorInfo = treinadorPromise.data;
-
-        // Atrasados
         if (atrasadosPromise.error) throw new Error("Erro ao buscar alunos atrasados.");
+        if (proximosPromise.error) throw new Error("Erro ao buscar próximos vencimentos.");
+        if (pagosPromise.error) throw new Error("Erro ao buscar alunos em dia.");
+        if (totalAlunosPromise.error) throw new Error("Erro ao buscar total de alunos.");
+
+        const treinadorInfo = treinadorPromise.data;
+        
         const atrasadosCount = atrasadosPromise.count ?? 0;
-        // Calcula a soma dos valores - IMPORTANTE: Supabase não faz SUM direto com count na mesma query via JS client
-        // A melhor forma seria uma Supabase Function (RPC) ou calcular no client-side
         let atrasadosValorTotal = 0;
         if (atrasadosPromise.data) {
            atrasadosValorTotal = atrasadosPromise.data.reduce((sum, aluno) => sum + (aluno.valor_mensalidade || 0), 0);
         }
-
-
-        // Próximos
-        if (proximosPromise.error) throw new Error("Erro ao buscar próximos vencimentos.");
+        
         const proximosCount = proximosPromise.count ?? 0;
-
-        // Total Alunos
-        if (totalAlunosPromise.error) throw new Error("Erro ao buscar total de alunos.");
+        const pagosCount = pagosPromise.count ?? 0;
         const totalAlunos = totalAlunosPromise.count ?? 0;
 
-        // --- Atualizar Estado ---
         setData({
           atrasadosCount,
           atrasadosValorTotal,
           proximosCount,
+          pagosCount,
           totalAlunos,
           planoAtual: treinadorInfo.plano_atual,
           limiteAlunos: treinadorInfo.limite_alunos,
@@ -117,7 +136,6 @@ const HomeAcao: React.FC = () => {
     fetchDashboardData();
   }, [router]);
 
-  // --- Funções Auxiliares de Formatação ---
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
@@ -143,42 +161,56 @@ const HomeAcao: React.FC = () => {
 
         {!loading && data && (
           <>
-            <h1 className="text-3xl font-bold mb-8 text-white">Pronto para a Ação, Treinador!</h1>
+            <h1 className="text-3xl font-bold mb-8 text-white">Status Financeiro, Treinador!</h1>
             
-            {/* DOIS CARTÕES GIGANTES de Foco (AGORA COM DADOS REAIS) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-              {/* Cartão 1: INADIMPLÊNCIA */}
-              <div className="bg-gray-800 p-8 rounded-xl shadow-2xl border-l-4 border-dribla-orange">
-                <h2 className="text-xl font-semibold text-gray-200 mb-4 flex items-center">
-                  <AlertTriangle className="w-5 h-5 mr-2 text-dribla-orange" /> Atenção! Cobranças Pendentes
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+              {/* Card 1: INADIMPLÊNCIA (Vencidos) */}
+              <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-dribla-orange">
+                <h2 className="text-lg font-semibold text-gray-200 mb-3 flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2 text-dribla-orange" /> Atrasados
                 </h2>
-                <p className="text-5xl font-extrabold text-dribla-orange mb-4">
+                <p className="text-4xl font-extrabold text-dribla-orange mb-3">
                   {formatCurrency(data.atrasadosValorTotal)}
                 </p>
-                <p className="text-gray-400 mb-6">{data.atrasadosCount} Alunos Atrasados</p>
+                <p className="text-gray-400 mb-5 text-sm">{data.atrasadosCount} Alunos</p>
                 <Link href="/elenco?filtro=vencida">
-                  <button className="w-full py-3 bg-dribla-orange text-gray-900 font-bold rounded-lg hover:bg-orange-500 transition duration-200">
-                    RESOLVER AGORA
+                  <button className="w-full py-2 bg-dribla-orange text-gray-900 font-bold rounded-lg hover:bg-orange-500 transition duration-200 text-sm">
+                    Resolver Agora
                   </button>
                 </Link>
               </div>
 
-              {/* Cartão 2: PRÓXIMOS VENCIMENTOS */}
-              <div className="bg-gray-800 p-8 rounded-xl shadow-2xl border-l-4 border-dribla-green">
-                <h2 className="text-xl font-semibold text-gray-200 mb-4 flex items-center">
-                  <Clock className="w-5 h-5 mr-2 text-dribla-green" /> Próximos Pagamentos
+              {/* --- CORREÇÃO DE COR AQUI --- */}
+              {/* Card 2: PRÓXIMOS VENCIMENTOS (Amarelo) */}
+              <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                <h2 className="text-lg font-semibold text-gray-200 mb-3 flex items-center">
+                  <Clock className="w-5 h-5 mr-2 text-yellow-500" /> Próximos a Vencer
                 </h2>
-                <p className="text-5xl font-extrabold text-dribla-green mb-4">{data.proximosCount}</p>
-                <p className="text-gray-400 mb-6">Alunos com vencimento nos próximos 5 dias</p>
+                <p className="text-4xl font-extrabold text-yellow-500 mb-3">{data.proximosCount}</p>
+                <p className="text-gray-400 mb-5 text-sm">(Próximos 5 dias)</p>
                  <Link href="/elenco?filtro=proximo">
-                  <button className="w-full py-3 bg-dribla-green text-gray-900 font-bold rounded-lg hover:bg-green-600 transition duration-200">
-                    VER ALUNOS
+                  <button className="w-full py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-yellow-500 hover:text-gray-900 transition duration-200 text-sm">
+                    Ver Alunos
+                  </button>
+                 </Link>
+              </div>
+
+              {/* Card 3: PAGOS (EM DIA) */}
+              <div className="bg-gray-800 p-6 rounded-xl shadow-lg border-l-4 border-dribla-green">
+                <h2 className="text-lg font-semibold text-gray-200 mb-3 flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-dribla-green" /> Em Dia
+                </h2>
+                <p className="text-4xl font-extrabold text-dribla-green mb-3">{data.pagosCount}</p>
+                <p className="text-gray-400 mb-5 text-sm">(Pagamento seguro)</p>
+                 <Link href="/elenco?filtro=paga">
+                  <button className="w-full py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-dribla-green hover:text-gray-900 transition duration-200 text-sm">
+                    Ver Alunos
                   </button>
                  </Link>
               </div>
             </div>
 
-            {/* Seção de Ocupação do Time / Registro Rápido */}
+            {/* Seção de Ocupação do Time */}
             <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
               <div className='text-center md:text-left'>
                 <h2 className="text-lg font-semibold text-white mb-1 flex items-center">
@@ -190,13 +222,13 @@ const HomeAcao: React.FC = () => {
                 </p>
               </div>
               <div className='flex space-x-4'>
-                <Link href="/checkout?plano=VIP">
+                <Link href="/planos">
                     <button className='px-4 py-2 text-sm bg-gray-700 hover:bg-dribla-green hover:text-gray-900 rounded-lg transition duration-200'>
                         Fazer Upgrade
                     </button>
                 </Link>
                  <Link href="/elenco">
-                    <button className='px-4 py-2 text-sm bg-dribla-green text-gray-900 font-semibold rounded-lg hover:bg-green-600 transition duration-200'>
+                    <button className='btn-primary px-4 py-2 text-sm'>
                         Gerenciar Elenco
                     </button>
                  </Link>
