@@ -14,6 +14,9 @@ self.__BUILD_MANIFEST = {
   "/login": [
     "static/chunks/pages/login.js"
   ],
+  "/planos": [
+    "static/chunks/pages/planos.js"
+  ],
   "__rewrites": {
     "afterFiles": [],
     "beforeFiles": [],
