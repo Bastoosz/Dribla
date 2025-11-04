@@ -1,20 +1,16 @@
-// pages/checkout.tsx
-
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { Loader2, Lock, Check } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient'; // <<< IMPORTA O SUPABASE
+import { supabase } from '../lib/supabaseClient'; 
 
-// Define a estrutura para os detalhes do plano
 interface PlanoDetalhes {
   nome: string;
   preco: string;
   beneficios: string[];
 }
 
-// Mapeia o parâmetro da query para os detalhes do plano
 const planosInfo: Record<string, PlanoDetalhes> = {
   VIP: {
     nome: 'Plano VIP',
@@ -44,7 +40,7 @@ const CheckoutPage: React.FC = () => {
   const { plano } = router.query;
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoDetalhes | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Estado para erros
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (plano && typeof plano === 'string' && planosInfo[plano.toUpperCase()]) {

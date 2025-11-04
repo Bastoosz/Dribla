@@ -465,7 +465,6 @@ function triggerUpdate(msg) {
 "[project]/lib/supabaseClient.ts [client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
-// lib/supabaseClient.ts
 __turbopack_context__.s([
     "supabase",
     ()=>supabase

@@ -8,7 +8,6 @@ module.exports = mod;
 "[project]/lib/supabaseClient.ts [ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
-// lib/supabaseClient.ts
 __turbopack_context__.s([
     "supabase",
     ()=>supabase
