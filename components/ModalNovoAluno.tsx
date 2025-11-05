@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Loader2 } from 'lucide-react';
-import type { Aluno } from '../types/aluno.ts';
+import type { Aluno } from '../types/aluno';
 
 interface ModalNovoAlunoProps {
   onClose: () => void;

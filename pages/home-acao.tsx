@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Layout from 'components/Layout';
-import { supabase } from 'lib/supabaseClient';
+import Layout from '../components/Layout';
+import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Loader2, Users, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
-import type { Aluno } from 'types/aluno.ts';
+import type { Aluno } from '../types/aluno';
 
 // Tipagem para os dados do Dashboard
 interface DashboardData {

@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useMemo, ElementType } from 'react';
 import Head from 'next/head';
-import Layout from 'components/Layout';
-import ModalNovoAluno from 'components/ModalNovoAluno';
-import ModalEditarAluno from 'components/ModalEditarAluno';
-import ModalConfirmarExclusao from 'components/ModalConfirmarExclusao';
-import { supabase } from 'lib/supabaseClient';
+import Layout from '../components/Layout';
+import ModalNovoAluno from '../components/ModalNovoAluno';
+import ModalEditarAluno from '../components/ModalEditarAluno';
+import ModalConfirmarExclusao from '../components/ModalConfirmarExclusao';
+import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import { Loader2, Plus, Edit, Trash2, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
-import type { Aluno } from 'types/aluno.ts';
+import type { Aluno } from '../types/aluno';
 
 type StatusFiltro = 'todos' | 'vencida' | 'proximo' | 'paga';
 type RealtimeStatus = 'vencida' | 'proximo' | 'paga';
