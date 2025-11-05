@@ -107,7 +107,7 @@ const PlanosPage: React.FC = () => {
               nome={plano.nome}
               preco={plano.preco}
               limiteAlunos={plano.limiteAlunos}
-              beneficios={plano.beneficios}
+              beneficios={[...plano.beneficios]}
               destaque={plano.destaque}
               planoQuery={plano.planoQuery} // Agora o tipo bate corretamente
             />
