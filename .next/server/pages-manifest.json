@@ -1,9 +1,16 @@
 {
+  "/": "pages/index.html",
   "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/checkout": "pages/checkout.js",
-  "/home-acao": "pages/home-acao.js",
-  "/login": "pages/login.js",
-  "/": "pages/index.js"
+  "/_error": "pages/_error.js",
+  "/api/cron/enviar_cobrancas": "pages/api/cron/enviar_cobrancas.js",
+  "/cadastro": "pages/cadastro.html",
+  "/checkout": "pages/checkout.html",
+  "/contato": "pages/contato.html",
+  "/elenco": "pages/elenco.html",
+  "/financeiro": "pages/financeiro.html",
+  "/home-acao": "pages/home-acao.html",
+  "/login": "pages/login.html",
+  "/planos": "pages/planos.html",
+  "/404": "pages/404.html"
 }

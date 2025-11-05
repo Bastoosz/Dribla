@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Loader2 } from 'lucide-react';
-import type { Aluno } from '../types';
+import type { Aluno } from '../types/aluno';
 
 // O tipo de status da BD
 type StatusMensalidadeDB = Aluno['status_mensalidade']; // 'pago' | 'pendente'
