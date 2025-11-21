@@ -12,6 +12,11 @@ import {
   trackSuspiciousActivity 
 } from '../../../lib/antiSpam';
 
+// Validar se RESEND_API_KEY está configurado
+if (!process.env.RESEND_API_KEY) {
+  console.error('ERRO CRÍTICO: RESEND_API_KEY não está configurado nas variáveis de ambiente!');
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 type EmailData = {
@@ -381,6 +386,12 @@ async function handler(
           `,
         });
         if (error) {
+          console.error('Erro Resend:', error);
+          logger.error('Erro ao enviar email individual', { 
+            error: error.message || error,
+            aluno: emailData.nomeAluno,
+            email: emailData.emailResponsavel 
+          });
           throw error;
         }
         return { alunoId: emailData.alunoId, success: true, data };
@@ -388,6 +399,15 @@ async function handler(
     );
     const sucesso = resultados.filter((r) => r.status === 'fulfilled').length;
     const falhas = resultados.filter((r) => r.status === 'rejected').length;
+    
+    // Log detalhado das falhas
+    const falhasDetalhadas = resultados
+      .filter((r) => r.status === 'rejected')
+      .map((r: any) => r.reason?.message || r.reason);
+    
+    if (falhas > 0) {
+      logger.error('Detalhes das falhas:', { falhas: falhasDetalhadas });
+    }
     
     const duration = Date.now() - startTime;
     logger.info(`Emails enviados: ${sucesso} sucesso, ${falhas} falhas`, {
@@ -403,6 +423,7 @@ async function handler(
       message: `${sucesso} email(s) enviado(s) com sucesso${falhas > 0 ? `, ${falhas} falha(s)` : ''}`,
       enviados: sucesso,
       falhas: falhas,
+      erros: falhasDetalhadas, // Incluir erros para debug
       limiteDiarioRestante: dailyLimit.remaining,
     });
   } catch (error: any) {
