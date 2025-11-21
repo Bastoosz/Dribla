@@ -1,284 +1,208 @@
-// pages/elenco.tsx
-
-import React, { useState, useEffect, useMemo, ElementType } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
-import Layout from '../components/Layout';
-import ModalNovoAluno from '../components/ModalNovoAluno';
-import ModalEditarAluno from '../components/ModalEditarAluno';
-import ModalConfirmarExclusao from '../components/ModalConfirmarExclusao';
-import { supabase } from '../lib/supabaseClient';
+import Layout from 'components/Layout';
+import ModalNovoAluno from 'components/ModalNovoAluno';
+import { ModalEditarAluno } from 'components/ModalEditarAluno';
+import ModalConfirmarExclusao from 'components/ModalConfirmarExclusao';
+import ModalEnviarCobranca from '../components/ModalEnviarCobranca';
+import { supabase } from 'lib/supabaseClient';
 import { useRouter } from 'next/router';
-import { Loader2, Plus, Edit, Trash2, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
-import type { Aluno } from '../types/aluno';
-
-type StatusFiltro = 'todos' | 'vencida' | 'proximo' | 'paga';
-type RealtimeStatus = 'vencida' | 'proximo' | 'paga';
-
-// --- CORREÇÃO DE COR AQUI ---
-// Objeto de configuração para os chips de status
-const statusMap: Record<RealtimeStatus, { texto: string; corFundo: string; corTexto: string; icone: ElementType }> = {
-  vencida: {
-    texto: 'Vencido',
-    corFundo: 'bg-red-100 dark:bg-dribla-orange/20',
-    corTexto: 'text-red-800 dark:text-dribla-orange',
-    icone: AlertTriangle,
-  },
-  proximo: {
-    texto: 'Próximo',
-    corFundo: 'bg-yellow-100 dark:bg-yellow-500/20', // Azul -> Amarelo
-    corTexto: 'text-yellow-800 dark:text-yellow-400', // Azul -> Amarelo
-    icone: Clock,
-  },
-  paga: {
-    texto: 'Em Dia', 
-    corFundo: 'bg-green-100 dark:bg-dribla-green/20',
-    corTexto: 'text-green-800 dark:text-dribla-green',
-    icone: CheckCircle,
-  },
-};
-
-// --- FUNÇÃO HELPER: Calcula o status em tempo real ---
-// (Esta função permanece a mesma, pois a lógica não muda)
-const getRealtimeStatus = (aluno: Aluno, hoje: Date): RealtimeStatus => {
-  if (aluno.status_mensalidade === 'pago') {
-    return 'paga';
-  }
-  const vencimento = new Date(aluno.data_vencimento_mensalidade + 'T00:00:00');
-  vencimento.setHours(0, 0, 0, 0);
-  if (vencimento < hoje) {
-    return 'vencida';
-  }
-  const cincoDias = new Date(hoje);
-  cincoDias.setDate(hoje.getDate() + 5);
-  if (vencimento >= hoje && vencimento <= cincoDias) {
-    return 'proximo';
-  }
-  return 'paga'; 
-};
-
-
+import { Loader2, Plus, AlertTriangle, SearchX, Mail } from 'lucide-react';
+import type { Aluno } from 'types/aluno';
+import { RealtimeStatus, getRealtimeStatus } from 'utils/statusUtils';
+import { Button } from 'components/ui/Button';
+import { Alert } from 'components/ui/Alert';
+import Link from 'next/link';
+import { ElencoFilter } from '../components/ElencoFilter';
+import { ElencoTable } from '../components/ElencoTable';
+type StatusFiltro = 'todos' | RealtimeStatus;
 const ElencoPage: React.FC = () => {
   const router = useRouter();
-  
   const [showNovoModal, setShowNovoModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
-  const [allAlunos, setAllAlunos] = useState<Aluno[]>([]); 
+  const [showCobrancaModal, setShowCobrancaModal] = useState(false);
+  const [allAlunos, setAllAlunos] = useState<Aluno[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
   const [currentFilter, setCurrentFilter] = useState<StatusFiltro>('todos');
   const [editingAluno, setEditingAluno] = useState<Aluno | null>(null);
   const [deletingAluno, setDeletingAluno] = useState<Aluno | null>(null);
-
-  const [limiteAlunos, setLimiteAlunos] = useState(30); // Placeholder
-
-  // --- Funções (fetchAlunos, processamento, callbacks, formatação) ---
-  // (Todo o bloco de lógica interna permanece o mesmo)
-  // ...
-  // --- 1. BUSCA INICIAL DE DADOS ---
+  const [limiteAlunos, setLimiteAlunos] = useState(30);
+  const [planoAtual, setPlanoAtual] = useState<'free' | 'vip' | 'premium' | string>('free');
   const fetchAlunos = async () => {
     setLoading(true);
     setError(null);
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push('/login');
       return;
     }
-    
-    // TODO: Buscar o limite do treinador aqui também
-    // const { data: treinador } = await supabase.from('treinadores').select('limite_alunos').eq('id', user.id).single();
-    // if (treinador) setLimiteAlunos(treinador.limite_alunos);
-
-    const { data, error: fetchError } = await supabase
-      .from('alunos')
-      .select('*')
-      .eq('id_treinador', user.id)
-      .order('nome_aluno', { ascending: true });
-
-    if (fetchError) {
-      console.error("Erro ao buscar alunos:", fetchError);
-      setError("Não foi possível carregar o elenco. Tente novamente.");
-    } else {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('alunos')
+        .select('*')
+        .eq('id_treinador', user.id)
+        .order('nome_aluno', { ascending: true });
+      if (fetchError) throw fetchError;
+      const { data: treinador } = await supabase
+        .from('treinadores')
+        .select('plano_atual, limite_alunos')
+        .eq('id', user.id)
+        .single();
+      if (treinador) {
+        setPlanoAtual(treinador.plano_atual || 'free');
+        setLimiteAlunos(typeof treinador.limite_alunos === 'number' ? treinador.limite_alunos : limiteAlunos);
+      }
       setAllAlunos(data || []);
+    } catch (err: any) {
+      setError("Não foi possível carregar o elenco. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
-
   useEffect(() => {
     fetchAlunos();
-  }, [router]); // Adicionado router
-
-  // --- 2. CÁLCULO DOS STATUS EM TEMPO REAL ---
+    if (router.query.filtro === 'vencida' && router.query.action === 'cobrar') {
+      setCurrentFilter('vencida');
+      setShowCobrancaModal(true);
+      const { action, ...restQuery } = router.query;
+      router.replace({
+        pathname: router.pathname,
+        query: restQuery,
+      }, undefined, { shallow: true });
+    } else if (router.query.filtro) {
+      setCurrentFilter(router.query.filtro as StatusFiltro);
+    }
+  }, [router.query]);
   const processedAlunos = useMemo(() => {
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); 
+    hoje.setHours(0, 0, 0, 0);
     return allAlunos.map(aluno => ({
       ...aluno,
       realtimeStatus: getRealtimeStatus(aluno, hoje),
     }));
   }, [allAlunos]);
-
-  // --- 3. CÁLCULO DOS CONTADORES (FILTROS) ---
   const filterCounts = useMemo(() => {
     return {
       todos: processedAlunos.length,
       vencida: processedAlunos.filter(a => a.realtimeStatus === 'vencida').length,
       proximo: processedAlunos.filter(a => a.realtimeStatus === 'proximo').length,
       paga: processedAlunos.filter(a => a.realtimeStatus === 'paga').length,
+      pendente: processedAlunos.filter(a => a.realtimeStatus === 'pendente').length,
     };
   }, [processedAlunos]);
-
-  // --- 4. FILTRAGEM DA LISTA EXIBIDA ---
   const filteredAlunos = useMemo(() => {
     if (currentFilter === 'todos') {
       return processedAlunos;
     }
     return processedAlunos.filter(aluno => aluno.realtimeStatus === currentFilter);
   }, [processedAlunos, currentFilter]);
-
-
-  // --- 5. FUNÇÕES DE CALLBACK DOS MODAIS ---
   const handleAlunoAdicionado = () => { setShowNovoModal(false); fetchAlunos(); };
   const openEditModal = (aluno: Aluno) => { setEditingAluno(aluno); setShowEditModal(true); };
   const handleAlunoEditado = () => { setShowEditModal(false); setEditingAluno(null); fetchAlunos(); };
   const openDeleteConfirm = (aluno: Aluno) => { setDeletingAluno(aluno); setShowDeleteConfirm(true); };
   const handleAlunoExcluido = () => { setShowDeleteConfirm(false); setDeletingAluno(null); fetchAlunos(); };
-
-  // --- 6. FUNÇÕES DE FORMATAÇÃO ---
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString + 'T00:00:00');
-      const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' };
-      return date.toLocaleDateString('pt-BR', options);
-    } catch (e) { return 'Data Inválida'; }
-  };
-  const formatCurrency = (value: number | null) => {
-    if (value === null) return 'N/A';
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
-  // ...
-
+  const estaBloqueado = limiteAlunos !== 99999 && allAlunos.length >= limiteAlunos;
   return (
     <>
       <Head>
         <title>Dribla | Elenco</title>
       </Head>
       <Layout title="Gestão de Alunos (Elenco)">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-white">Meu Elenco</h1>
-          <button 
-            onClick={() => setShowNovoModal(true)} 
-            className="btn-primary"
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Meu Elenco</h1>
+            <p className="text-xs md:text-sm text-gray-400">Gerencie todos os atletas da sua escolinha</p>
+          </div>
+          <Button
+            onClick={() => { if (!estaBloqueado) setShowNovoModal(true); }}
+            variant={estaBloqueado ? 'secondary' : 'primary'}
+            size="md"
+            disabled={estaBloqueado}
+            title={estaBloqueado ? 'Limite de alunos atingido. Faça upgrade em Planos.' : undefined}
+            className="shadow-lg shadow-dribla-green/20 w-full md:w-auto"
           >
             <Plus className="w-5 h-5 mr-2" /> Novo Atleta
-          </button>
+          </Button>
         </div>
-
-        {/* --- CORREÇÃO DE COR AQUI --- */}
-        {/* Botões de Filtro (Botão "Próximos" alterado para Amarelo) */}
-        <div className="flex space-x-2 mb-6">
-          <button 
-            onClick={() => setCurrentFilter('todos')} 
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${currentFilter === 'todos' ? 'bg-dribla-green text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            Todos ({filterCounts.todos})
-          </button>
-          <button 
-            onClick={() => setCurrentFilter('vencida')} 
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${currentFilter === 'vencida' ? 'bg-dribla-orange text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            Atrasados ({filterCounts.vencida})
-          </button>
-          <button 
-            onClick={() => setCurrentFilter('proximo')} 
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${currentFilter === 'proximo' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`} // Azul -> Amarelo
-          >
-            Próximos ({filterCounts.proximo})
-          </button>
-          <button 
-            onClick={() => setCurrentFilter('paga')} 
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${currentFilter === 'paga' ? 'bg-dribla-green/70 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            Em Dia ({filterCounts.paga})
-          </button>
-        </div>
-
-        {/* Feedback Visual (Loading, Erro, Vazio) */}
-        {loading && ( <div className="flex justify-center items-center py-10"><Loader2 className="w-10 h-10 text-dribla-green animate-spin" /></div> )}
-        {error && ( <p className="p-6 bg-red-900/50 text-red-300 text-center rounded-lg border border-red-800">{error}</p> )}
-        {!loading && !error && filteredAlunos.length === 0 && (
-          <p className="p-6 bg-gray-800/50 text-gray-300 text-center rounded-lg border border-gray-700">
-            Nenhum aluno encontrado para os filtros selecionados.
-          </p>
+        {estaBloqueado && (
+          <Alert variant="warning" title="Limite de Alunos Atingido" className="mb-6">
+            Seu plano atual (<span className="font-bold">{planoAtual}</span>) permite até <span className="font-bold">{limiteAlunos}</span> alunos. Você tem <span className="font-bold">{allAlunos.length}</span> cadastrados.
+            <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Link href="/planos" className="inline-block px-6 py-2.5 bg-dribla-green text-gray-900 rounded-lg font-semibold hover:bg-dribla-green-600 transition-all duration-200 shadow-lg shadow-dribla-green/20 text-center">Fazer Upgrade</Link>
+              <span className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">ou remova atletas existentes para criar novos.</span>
+            </div>
+          </Alert>
         )}
-
-        {/* Tabela de Alunos */}
-        {!loading && !error && filteredAlunos.length > 0 && (
-          <div className="overflow-x-auto bg-gray-800 rounded-lg shadow-xl border border-gray-700">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Aluno</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Responsável</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vencimento</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status (Tempo Real)</th>
-                  <th scope="col" className="relative px-6 py-3"><span className="sr-only">Ações</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {filteredAlunos.map((aluno) => {
-                  // --- CORREÇÃO DE COR AQUI ---
-                  // (Usa o statusMap atualizado)
-                  const statusInfo = statusMap[aluno.realtimeStatus as RealtimeStatus];
-
-                  return (
-                    <tr key={aluno.id} className="hover:bg-gray-700/50 transition duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{aluno.nome_aluno}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300">{aluno.nome_pai || 'N/A'}</div>
-                        <div className="text-xs text-gray-500">{aluno.email_pai}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300">{formatDate(aluno.data_vencimento_mensalidade)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300">{formatCurrency(aluno.valor_mensalidade)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusInfo.corFundo} ${statusInfo.corTexto}`}>
-                          <statusInfo.icone className="w-4 h-4 mr-1.5" />
-                          {statusInfo.texto}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                        <button onClick={() => openEditModal(aluno)} className="text-blue-400 hover:text-blue-300 transition duration-150">
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => openDeleteConfirm(aluno)} className="text-red-500 hover:text-red-400 transition duration-150">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <ElencoFilter
+          currentFilter={currentFilter}
+          filterCounts={filterCounts}
+          onFilterChange={setCurrentFilter}
+        />
+        {}
+        {currentFilter === 'vencida' && filterCounts.vencida > 0 && (
+          <div className="mb-6">
+            <Button
+              onClick={() => setShowCobrancaModal(true)}
+              className="bg-gradient-to-r from-dribla-green to-green-500 hover:from-dribla-green-600 hover:to-green-600 text-gray-900 font-bold shadow-lg shadow-dribla-green/30 flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Enviar Cobrança ({filterCounts.vencida} aluno{filterCounts.vencida !== 1 ? 's' : ''})</span>
+            </Button>
           </div>
         )}
-
-        {/* Modais (Renderização Condicional - sem alterações) */}
-        {showNovoModal && ( <ModalNovoAluno onClose={() => setShowNovoModal(false)} onAlunoAdicionado={handleAlunoAdicionado} contagemAtualAlunos={allAlunos.length} limiteAlunos={limiteAlunos} /> )}
-        {showEditModal && editingAluno && ( <ModalEditarAluno aluno={editingAluno} onClose={() => { setShowEditModal(false); setEditingAluno(null); }} onAlunoEditado={handleAlunoEditado} /> )}
-        {showDeleteConfirm && deletingAluno && ( <ModalConfirmarExclusao aluno={deletingAluno} onClose={() => { setShowDeleteConfirm(false); setDeletingAluno(null); }} onAlunoExcluido={handleAlunoExcluido} /> )}
+        {loading && (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="w-10 h-10 text-dribla-green animate-spin" />
+          </div>
+        )}
+        {error && (
+          <div className="p-4 sm:p-6 bg-gradient-to-br from-red-900/50 to-red-800/30 backdrop-blur-sm text-red-300 text-center rounded-2xl border border-red-800 shadow-2xl">
+            <p className="flex items-center justify-center gap-2 text-sm sm:text-base md:text-lg">
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
+              {error}
+            </p>
+          </div>
+        )}
+        {!loading && !error && filteredAlunos.length === 0 && (
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 backdrop-blur-sm p-6 sm:p-8 md:p-12 rounded-2xl text-center border border-gray-700 shadow-2xl">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gray-700/50 rounded-full mb-4">
+              <SearchX className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+            </div>
+            <p className="text-lg sm:text-xl font-bold mb-2 text-white">
+              Nenhum atleta encontrado neste filtro.
+            </p>
+            <p className="text-sm sm:text-base text-gray-400">
+              Tente um filtro diferente ou{' '}
+                {estaBloqueado ? (
+                <Link href="/planos" className="text-dribla-green hover:text-dribla-green-600 font-semibold transition-colors">faça upgrade do seu plano</Link>
+              ) : (
+                <button
+                  onClick={() => setShowNovoModal(true)}
+                  className="text-dribla-green hover:text-dribla-green-600 font-semibold transition-colors"
+                >
+                  adicione um novo atleta
+                </button>
+              )}.
+            </p>
+          </div>
+        )}
+        {!loading && !error && filteredAlunos.length > 0 && (
+          <ElencoTable alunos={filteredAlunos} onEdit={openEditModal} onDelete={openDeleteConfirm} />
+        )}
+        {showNovoModal && (<ModalNovoAluno onClose={() => setShowNovoModal(false)} onAlunoAdicionado={handleAlunoAdicionado} contagemAtualAlunos={allAlunos.length} limiteAlunos={limiteAlunos} />)}
+        {showEditModal && editingAluno && (<ModalEditarAluno aluno={editingAluno} onClose={() => { setShowEditModal(false); setEditingAluno(null); }} onAlunoEditado={handleAlunoEditado} />)}
+        {showDeleteConfirm && deletingAluno && (<ModalConfirmarExclusao aluno={deletingAluno} onClose={() => { setShowDeleteConfirm(false); setDeletingAluno(null); }} onAlunoExcluido={handleAlunoExcluido} />)}
+        {showCobrancaModal && (
+          <ModalEnviarCobranca
+            isOpen={showCobrancaModal}
+            onClose={() => setShowCobrancaModal(false)}
+            alunosAtrasados={filteredAlunos.filter(a => a.realtimeStatus === 'vencida')}
+          />
+        )}
       </Layout>
     </>
   );
 };
-
 export default ElencoPage;

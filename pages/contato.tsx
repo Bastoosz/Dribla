@@ -1,10 +1,7 @@
-// pages/contato.tsx
-
 import React, { useState } from 'react';
 import Head from 'next/head';
-import Layout from '../components/Layout'; // Layout principal com sidebar
-import { Loader2, Send } from 'lucide-react'; // Ícones
-
+import Layout from '../components/Layout'; 
+import { Loader2, Send } from 'lucide-react'; 
 const ContatoPage: React.FC = () => {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -12,36 +9,20 @@ const ContatoPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(false);
-
-    // --- Simulação de Envio ---
-    // Aqui você integraria com um serviço de backend ou API de formulário (ex: Formspree, Resend)
     console.log("Simulando envio de contato:", { nome, email, mensagem });
-
-    // Simula um tempo de processamento
     await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Simula sucesso (poderia ter lógica de erro aqui também)
     setLoading(false);
     setSuccess(true);
-    // Limpa o formulário após sucesso
     setNome('');
     setEmail('');
     setMensagem('');
-
-    // Remove a mensagem de sucesso após alguns segundos
     setTimeout(() => setSuccess(false), 5000);
-
-    // --- Exemplo de lógica de erro (descomentar para testar) ---
-    // setError("Ocorreu um erro ao enviar sua mensagem. Tente novamente.");
-    // setLoading(false);
   };
-
   return (
     <>
       <Head>
@@ -53,19 +34,16 @@ const ContatoPage: React.FC = () => {
           <p className="text-gray-400 mb-8 text-center">
             Tem alguma dúvida, sugestão ou precisa de ajuda? Preencha o formulário abaixo.
           </p>
-
           {success && (
             <div className="mb-6 p-4 bg-dribla-green/20 text-dribla-green rounded-lg border border-dribla-green text-center text-sm">
               Mensagem enviada com sucesso! Entraremos em contato em breve.
             </div>
           )}
-
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 text-red-400 rounded-lg border border-red-500 text-center text-sm">
               {error}
             </div>
           )}
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="nome" className="label-dribla">Seu Nome</label>
@@ -75,11 +53,10 @@ const ContatoPage: React.FC = () => {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
-                className="input-dribla" // Usa a classe global de input
+                className="input-dribla" 
                 placeholder="Como podemos te chamar?"
               />
             </div>
-
             <div>
               <label htmlFor="email" className="label-dribla">Seu E-mail</label>
               <input
@@ -92,7 +69,6 @@ const ContatoPage: React.FC = () => {
                 placeholder="Para respondermos sua mensagem"
               />
             </div>
-
             <div>
               <label htmlFor="mensagem" className="label-dribla">Sua Mensagem</label>
               <textarea
@@ -100,16 +76,14 @@ const ContatoPage: React.FC = () => {
                 value={mensagem}
                 onChange={(e) => setMensagem(e.target.value)}
                 required
-                rows={5} // Aumenta a altura da caixa de texto
+                rows={5} 
                 className="input-dribla"
                 placeholder="Conte-nos como podemos ajudar..."
               />
             </div>
-
             <button
               type="submit"
               disabled={loading}
-              // Usa a classe global de botão primário
               className="w-full btn-primary"
             >
               {loading ? (
@@ -126,5 +100,4 @@ const ContatoPage: React.FC = () => {
     </>
   );
 };
-
 export default ContatoPage;

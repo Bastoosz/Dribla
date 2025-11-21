@@ -1,0 +1,196 @@
+// components/ModalEditarAluno.tsx.temp
+import React, { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { Loader2, User, Mail, CreditCard, Calendar } from 'lucide-react';
+import type { Aluno } from '../types/aluno';
+import { Modal } from './ui/Modal';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { Alert } from './ui/Alert';
+import { cn } from '../utils/cn';
+
+interface ModalEditarAlunoProps {
+  aluno: Aluno;
+  onClose: () => void;
+  onAlunoEditado: () => void;
+}
+
+const ModalEditarAluno: React.FC<ModalEditarAlunoProps> = ({ aluno, onClose, onAlunoEditado }) => {
+  const [nome, setNome] = useState(aluno.nome_aluno);
+  const [nomePai, setNomePai] = useState(aluno.nome_pai || '');
+  const [emailPai, setEmailPai] = useState(aluno.email_pai);
+  const [valor, setValor] = useState(aluno.valor_mensalidade || 0);
+  
+  const [vencimento, setVencimento] = useState(
+    aluno.data_vencimento_mensalidade ? new Date(aluno.data_vencimento_mensalidade + 'T00:00:00').toISOString().slice(0, 10) : ''
+  );
+  
+  const [statusMensalidade, setStatusMensalidade] = useState<StatusMensalidadeDB>(aluno.status_mensalidade);
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoadingModal(true);
+    setErrorModal(null);
+
+    const payload = {
+      nome_aluno: nome,
+      nome_pai: nomePai,
+      email_pai: emailPai,
+      valor_mensalidade: valor,
+      data_vencimento_mensalidade: new Date(vencimento + 'T00:00:00').toISOString(),
+      status_mensalidade: statusMensalidade,
+    };
+
+    const { error } = await supabase
+      .from('alunos')
+      .update(payload)
+      .eq('id', aluno.id);
+
+    if (error) {
+      console.error('Erro ao atualizar aluno:', error);
+      setErrorModal('Erro ao atualizar atleta. Verifique os dados e tente novamente.');
+      setLoadingModal(false);
+    } else {
+      setLoadingModal(false);
+      onAlunoEditado();
+      onClose();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Modal 
+        isOpen={true} 
+        onClose={onClose}
+        title="Editar Aluno"
+        footer={
+          <>
+            <Button 
+              variant="ghost" 
+              type="button"
+              onClick={onClose}
+              disabled={loadingModal}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit"
+              disabled={loadingModal}
+            >
+              {loadingModal ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Alterações'
+              )}
+            </Button>
+          </>
+        }
+      >
+        {errorModal && (
+          <Alert 
+            variant="error"
+            title="Erro ao editar aluno"
+            className="mb-6"
+          >
+            {errorModal}
+          </Alert>
+        )}
+
+        <div className="space-y-4">
+          <Input
+            label="Nome do Aluno"
+            icon={<User className="h-4 w-4" />}
+            type="text"
+            value={nome}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNome(e.target.value)}
+            required
+          />
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nome do Responsável"
+              icon={<User className="h-4 w-4" />}
+              type="text"
+              value={nomePai}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNomePai(e.target.value)}
+              placeholder="(Opcional)"
+            />
+            
+            <Input
+              label="Email do Responsável"
+              icon={<Mail className="h-4 w-4" />}
+              type="email"
+              value={emailPai}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailPai(e.target.value)}
+              placeholder="Para envio de cobranças"
+              required
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Valor da Mensalidade"
+              icon={<CreditCard className="h-4 w-4" />}
+              type="number"
+              value={valor}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValor(Number(e.target.value))}
+              placeholder="Ex: 100.00"
+              required
+              min="0"
+              step="0.01"
+            />
+            
+            <Input
+              label="Data de Vencimento"
+              icon={<Calendar className="h-4 w-4" />}
+              type="date"
+              value={vencimento}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVencimento(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              Status da Mensalidade
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusMensalidade('pendente')}
+                className={cn(
+                  "flex-1 p-3 rounded-lg border transition-colors",
+                  statusMensalidade === 'pendente' 
+                    ? "bg-gray-800 border-dribla-green text-white" 
+                    : "border-gray-700 text-gray-400 hover:border-gray-600"
+                )}
+              >
+                <Badge className="w-full" variant="warning">Pendente</Badge>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusMensalidade('pago')}
+                className={cn(
+                  "flex-1 p-3 rounded-lg border transition-colors",
+                  statusMensalidade === 'pago'
+                    ? "bg-gray-800 border-dribla-green text-white"
+                    : "border-gray-700 text-gray-400 hover:border-gray-600"
+                )}
+              >
+                <Badge className="w-full" variant="success">Pago</Badge>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </form>
+  );
+};
+
+export default ModalEditarAluno;

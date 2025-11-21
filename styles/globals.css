@@ -2,12 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #1A1A1A; /* Fundo Dribla Graphite */
-  color: #F3F4F6; /* Texto Dribla Light */
+@layer base {
+  body {
+    @apply bg-dribla-graphite text-dribla-light-900 antialiased;
+  }
+
+  /* Estilização padrão de títulos */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+
+  h1 { @apply text-4xl md:text-5xl lg:text-6xl; }
+  h2 { @apply text-3xl md:text-4xl lg:text-5xl; }
+  h3 { @apply text-2xl md:text-3xl lg:text-4xl; }
+  h4 { @apply text-xl md:text-2xl lg:text-3xl; }
 }
 
-/* === ADICIONE ESTAS CLASSES ABAIXO === */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@layer components {
+  .dribla-card {
+    @apply bg-dribla-graphite-700 rounded-xl p-6 transition-all duration-300
+           border border-dribla-graphite-600
+           hover:border-dribla-green-500 hover:shadow-lg hover:shadow-dribla-green-500/10;
+  }
+
+  /* Botão com gradiente animado */
+  .dribla-button {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg
+           font-semibold transition-all duration-300
+           bg-gradient-to-r from-dribla-green-500 to-dribla-green-600
+           hover:from-dribla-green-600 hover:to-dribla-green-700
+           text-white shadow-lg shadow-dribla-green-500/20
+           hover:shadow-xl hover:shadow-dribla-green-500/30
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Container com fundo gradiente animado */
+  .dribla-gradient-container {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      45deg,
+      theme('colors.dribla.graphite.800'),
+      theme('colors.dribla.graphite.700'),
+      theme('colors.dribla.graphite.600'),
+      theme('colors.dribla.graphite.700'),
+      theme('colors.dribla.graphite.800')
+    );
+    background-size: 400% 400%;
+    animation: gradient-xy 15s ease infinite;
+  }
+
+  /* Links de navegação */
+  .dribla-nav-link {
+    @apply text-dribla-light-600 hover:text-dribla-green-400 
+           transition-colors duration-200 px-4 py-2 rounded-lg
+           hover:bg-dribla-graphite-700;
+  }
+
+  /* Seções */
+  .dribla-section {
+    @apply py-16 md:py-24 px-4;
+  }
+}
+
+/* Animação de gradiente */
+@keyframes gradient-xy {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
 
 @layer components {
   /* Classe reutilizável para inputs */
@@ -33,3 +113,30 @@ body {
   }
 }
 
+/* Scrollbar customizada com tema Dribla */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.dribla.green.DEFAULT') theme('colors.gray.800');
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: theme('colors.gray.800');
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: theme('colors.dribla.green.DEFAULT');
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.dribla.green.600');
+  }
+}

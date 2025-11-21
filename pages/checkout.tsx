@@ -4,13 +4,11 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { Loader2, Lock, Check } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient'; 
-
 interface PlanoDetalhes {
   nome: string;
   preco: string;
   beneficios: string[];
 }
-
 const planosInfo: Record<string, PlanoDetalhes> = {
   VIP: {
     nome: 'Plano VIP',
@@ -34,14 +32,16 @@ const planosInfo: Record<string, PlanoDetalhes> = {
     ],
   },
 };
-
 const CheckoutPage: React.FC = () => {
   const router = useRouter();
   const { plano } = router.query;
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoDetalhes | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState(''); 
+  const [cardExpiry, setCardExpiry] = useState(''); 
+  const [cardCvv, setCardCvv] = useState('');
   useEffect(() => {
     if (plano && typeof plano === 'string' && planosInfo[plano.toUpperCase()]) {
       setPlanoSelecionado(planosInfo[plano.toUpperCase()]);
@@ -49,57 +49,60 @@ const CheckoutPage: React.FC = () => {
       setPlanoSelecionado(planosInfo['VIP']);
     }
   }, [plano]);
-
-  // --- FUNÇÃO DE PAGAMENTO ATUALIZADA ---
   const handlePagamento = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // 1. Obter o usuário logado
+    if (cardNumber.length !== 16) {
+      setError('Número do cartão inválido. Deve conter 16 dígitos.');
+      setLoading(false);
+      return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+      setError('Validade inválida. Use MM/AA.');
+      setLoading(false);
+      return;
+    }
+    const month = parseInt(cardExpiry.slice(0,2), 10);
+    if (month < 1 || month > 12) {
+      setError('Mês da validade inválido.');
+      setLoading(false);
+      return;
+    }
+    if (cardCvv.length !== 3) {
+      setError('CVV inválido. Deve ter 3 dígitos.');
+      setLoading(false);
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError('Usuário não autenticado. Faça login novamente.');
       setLoading(false);
       return;
     }
-
-    // 2. Determinar qual plano e limite aplicar
-    const planoQuery = Array.isArray(plano) ? plano[0] : plano; // Garante que 'plano' é string
-    
+    const planoQuery = Array.isArray(plano) ? plano[0] : plano; 
     if (!planoQuery || (planoQuery.toUpperCase() !== 'VIP' && planoQuery.toUpperCase() !== 'PREMIUM')) {
        setError('Plano inválido selecionado.');
        setLoading(false);
        return;
     }
-
     const novoPlano = planoQuery.toUpperCase() === 'VIP' ? 'vip' : 'premium';
-    const novoLimite = novoPlano === 'vip' ? 150 : 99999; // 99999 para "Ilimitado"
-
-    // 3. Atualizar a tabela 'treinadores' no Supabase
+    const novoLimite = novoPlano === 'vip' ? 150 : 99999; 
     const { error: updateError } = await supabase
       .from('treinadores')
       .update({
         plano_atual: novoPlano,
         limite_alunos: novoLimite
       })
-      .eq('id', user.id); // Atualiza apenas o treinador logado
-
+      .eq('id', user.id); 
     if (updateError) {
-      console.error('Erro ao atualizar plano:', updateError);
       setError('Não foi possível atualizar seu plano. Tente novamente.');
       setLoading(false);
       return;
     }
-    
-    // 4. Sucesso
     setLoading(false);
-    console.log('Plano atualizado com sucesso para:', novoPlano);
-    
-    // 5. Redirecionar para a página de financeiro com status de sucesso
     router.push('/financeiro?status=sucesso');
   };
-
   return (
     <>
       <Head>
@@ -107,8 +110,7 @@ const CheckoutPage: React.FC = () => {
       </Head>
       <Layout title={`Checkout - ${planoSelecionado?.nome || 'Finalizar Assinatura'}`}>
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
-
-          {/* Coluna Esquerda: Resumo do Plano */}
+          {}
           <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-lg">
             <h2 className="text-2xl font-bold mb-6 text-white">Resumo do Pedido</h2>
             {planoSelecionado ? (
@@ -135,42 +137,89 @@ const CheckoutPage: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Coluna Direita: Formulário de Pagamento */}
+          {}
           <div className="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-lg">
             <h2 className="text-2xl font-bold mb-6 text-white flex items-center">
               <Lock className="w-5 h-5 mr-2 text-gray-400"/> Informações de Pagamento
             </h2>
-
             <form onSubmit={handlePagamento} className="space-y-4">
-              {/* Campos do Formulário */}
+              {}
               <div>
                 <label htmlFor="card-nome" className="label-dribla">Nome no Cartão</label>
-                <input type="text" id="card-nome" placeholder="Nome completo" required className="input-dribla" />
+                <input
+                  type="text"
+                  id="card-nome"
+                  placeholder="Nome completo"
+                  required
+                  className="input-dribla"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                />
               </div>
               <div>
                 <label htmlFor="card-numero" className="label-dribla">Número do Cartão</label>
-                <input type="text" id="card-numero" placeholder="**** **** **** ****" required className="input-dribla" />
+                <input
+                  type="text"
+                  id="card-numero"
+                  inputMode="numeric"
+                  placeholder="1234 5678 9012 3456"
+                  required
+                  className="input-dribla"
+                  value={cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ')}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+                    setCardNumber(digits);
+                  }}
+                  maxLength={19} 
+                />
+                <p className="text-xs text-gray-500 mt-1">Somente números, máximo 16 dígitos.</p>
               </div>
               <div className="flex space-x-4">
                 <div className="w-2/3">
                   <label htmlFor="card-validade" className="label-dribla">Validade (MM/AA)</label>
-                  <input type="text" id="card-validade" placeholder="MM/AA" required className="input-dribla" />
+                  <input
+                    type="text"
+                    id="card-validade"
+                    inputMode="numeric"
+                    placeholder="MM/AA"
+                    required
+                    className="input-dribla"
+                    value={cardExpiry}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      if (raw.length <= 2) setCardExpiry(raw);
+                      else setCardExpiry(raw.slice(0,2) + '/' + raw.slice(2));
+                    }}
+                    maxLength={5}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Formato MM/AA</p>
                 </div>
                 <div className="w-1/3">
                   <label htmlFor="card-cvv" className="label-dribla">CVV</label>
-                  <input type="text" id="card-cvv" placeholder="***" required className="input-dribla" />
+                  <input
+                    type="text"
+                    id="card-cvv"
+                    inputMode="numeric"
+                    placeholder="123"
+                    required
+                    className="input-dribla"
+                    value={cardCvv}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 3);
+                      setCardCvv(digits);
+                    }}
+                    maxLength={3}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">3 dígitos (CVV)</p>
                 </div>
               </div>
-
-              {/* --- Exibição de Erro --- */}
+              {}
               {error && (
                 <div className="text-red-400 text-sm text-center p-3 bg-red-900/50 border border-red-700 rounded-lg">
                   {error}
                 </div>
               )}
-
-              {/* Botão de Pagamento */}
+              {}
               <button
                 type="submit"
                 disabled={loading || !planoSelecionado}
@@ -192,6 +241,4 @@ const CheckoutPage: React.FC = () => {
     </>
   );
 };
-
 export default CheckoutPage;
-

@@ -1,224 +1,202 @@
-// components/ModalNovoAluno.tsx
-
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, Mail, CreditCard, Calendar } from 'lucide-react';
 import type { Aluno } from '../types/aluno';
-
+import { Modal } from './ui/Modal';
+import { Input } from './ui/Input';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { Alert } from './ui/Alert';
+import { cn } from '../utils/cn';
 interface ModalNovoAlunoProps {
   onClose: () => void;
   onAlunoAdicionado: () => void;
   contagemAtualAlunos: number;
-  limiteAlunos: number; // TODO: Puxar isto do plano do treinador
+  limiteAlunos: number;
 }
-
-// O tipo de status da BD
-type StatusMensalidadeDB = Aluno['status_mensalidade']; // 'pago' | 'pendente'
-
+type StatusMensalidadeDB = Aluno['status_mensalidade'];
 const ModalNovoAluno: React.FC<ModalNovoAlunoProps> = ({ onClose, onAlunoAdicionado, contagemAtualAlunos, limiteAlunos }) => {
   const [nome, setNome] = useState('');
   const [nomePai, setNomePai] = useState('');
   const [emailPai, setEmailPai] = useState('');
-  const [valor, setValor] = useState<number>(100); // Valor padrão
-  
-  // Define a data de vencimento padrão para 30 dias a partir de hoje
+  const [valor, setValor] = useState<number>(100);
   const dataPadraoVencimento = new Date();
   dataPadraoVencimento.setDate(dataPadraoVencimento.getDate() + 30);
   const [vencimento, setVencimento] = useState(dataPadraoVencimento.toISOString().slice(0, 10));
-  
-  // NOVO ESTADO: O status é 'pago' ou 'pendente'? Padrão é 'pendente'
   const [statusInicial, setStatusInicial] = useState<StatusMensalidadeDB>('pendente');
-  
   const [loadingModal, setLoadingModal] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
-
-  // Verificação de Limite
-  // TODO: Esta lógica precisa ser movida para o handleSubmit para buscar o limite real do treinador
-  const isBloqueado = false; // contagemAtualAlunos >= limiteAlunos;
-
+  const isBloqueado = contagemAtualAlunos >= limiteAlunos;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: Adicionar verificação de limite real aqui (buscar dados do treinador)
-    // if (isBloqueado) {
-    //   setErrorModal(`Limite de ${limiteAlunos} alunos atingido. Faça upgrade.`);
-    //   return;
-    // }
-
+    if (isBloqueado) {
+      setErrorModal(`Limite de ${limiteAlunos} alunos atingido. Faça upgrade.`);
+      return;
+    }
     setLoadingModal(true);
     setErrorModal(null);
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setErrorModal('Utilizador não autenticado. Faça login novamente.');
+      setErrorModal('Sessão expirada. Por favor, faça login novamente.');
       setLoadingModal(false);
       return;
     }
-    
     const payload = {
+      id_treinador: user.id,
       nome_aluno: nome,
       nome_pai: nomePai,
       email_pai: emailPai,
-      data_matricula: new Date().toISOString(),
-      // Garante que a data seja guardada como UTC meia-noite
-      data_vencimento_mensalidade: new Date(vencimento + 'T00:00:00').toISOString(),
-      status_mensalidade: statusInicial, // Guarda 'pago' ou 'pendente'
       valor_mensalidade: valor,
-      id_treinador: user.id
+      data_vencimento_mensalidade: new Date(vencimento + 'T00:00:00').toISOString(),
+      status_mensalidade: statusInicial,
     };
-
-    const { error } = await supabase.from('alunos').insert([payload]);
-
+    const { error } = await supabase
+      .from('alunos')
+      .insert(payload);
     if (error) {
-      console.error('Erro ao inserir aluno:', error);
-      setErrorModal('Erro ao registar atleta. Verifique os dados e tente novamente.');
+      setErrorModal(error.message);
       setLoadingModal(false);
-    } else {
-      setLoadingModal(false);
-      onAlunoAdicionado();
+      return;
     }
+    onAlunoAdicionado();
+    onClose();
   };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/60">
-      <div className="bg-gray-800 p-8 rounded-xl z-10 w-full max-w-md border border-gray-700 shadow-xl">
-        <h2 className="text-xl font-bold mb-6 text-white">Adicionar Novo Atleta</h2>
-
-        {errorModal && (
-          <div className="mb-4 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-800 text-sm">
-            {errorModal}
-          </div>
-        )}
-        
-        {isBloqueado && (
-           <div className="mb-4 p-3 bg-dribla-orange/20 text-dribla-orange rounded-lg border border-dribla-orange text-sm">
-            <b>Limite Atingido!</b> Não pode adicionar mais alunos no seu plano atual.
-            <a href="/planos" className="font-bold underline ml-2">Fazer Upgrade</a>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="nome-atleta" className="label-dribla">Nome do Atleta*</label>
-            <input
-              id="nome-atleta"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              required
-              className="input-dribla"
-              placeholder="Nome completo do aluno"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="nome-pai" className="label-dribla">Nome do Responsável</label>
-              <input
-                id="nome-pai"
-                value={nomePai}
-                onChange={(e) => setNomePai(e.target.value)}
-                className="input-dribla"
-                placeholder="(Opcional)"
-              />
-            </div>
-             <div>
-              <label htmlFor="email-pai" className="label-dribla">Email do Responsável*</label>
-              <input
-                id="email-pai"
-                value={emailPai}
-                onChange={(e) => setEmailPai(e.target.value)}
-                type="email"
-                required
-                className="input-dribla"
-                placeholder="Para envio de cobranças"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="valor" className="label-dribla">Valor Mensalidade (R$)*</label>
-              <input
-                id="valor"
-                value={valor}
-                onChange={(e) => setValor(Number(e.target.value))}
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                className="input-dribla"
-                placeholder="Ex: 100.00"
-              />
-            </div>
-            <div>
-              <label htmlFor="vencimento" className="label-dribla">Próximo Vencimento*</label>
-              <input
-                id="vencimento"
-                value={vencimento}
-                onChange={(e) => setVencimento(e.target.value)}
-                type="date"
-                required
-                className="input-dribla"
-              />
-            </div>
-          </div>
-
-          {/* --- CAMPO DE STATUS (SIMPLIFICADO) --- */}
-          <div>
-            <label className="label-dribla">Status da Mensalidade na Matrícula*</label>
-            <div className="flex gap-4 mt-2">
-              <label className="flex items-center text-gray-300 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status-inicial"
-                  value="pendente"
-                  checked={statusInicial === 'pendente'}
-                  onChange={() => setStatusInicial('pendente')}
-                  className="w-4 h-4 text-dribla-green bg-gray-700 border-gray-600 focus:ring-dribla-green"
-                />
-                <span className="ml-2 text-sm">Pendente (Não Pago)</span>
-              </label>
-              <label className="flex items-center text-gray-300 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status-inicial"
-                  value="pago"
-                  checked={statusInicial === 'pago'}
-                  onChange={() => setStatusInicial('pago')}
-                  className="w-4 h-4 text-dribla-green bg-gray-700 border-gray-600 focus:ring-dribla-green"
-                />
-                <span className="ml-2 text-sm">Pago</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Botões de Ação */}
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
+    <form onSubmit={handleSubmit}>
+      <Modal 
+        isOpen={true} 
+        onClose={onClose}
+        title="Novo Aluno"
+        footer={
+          <>
+            <Button 
+              variant="ghost" 
               type="button"
               onClick={onClose}
               disabled={loadingModal}
-              className="btn-secondary"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button 
               type="submit"
               disabled={loadingModal || isBloqueado}
-              className="btn-primary"
             >
               {loadingModal ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Adicionando...
+                </>
               ) : (
-                'Adicionar Atleta'
+                'Adicionar Aluno'
               )}
-            </button>
+            </Button>
+          </>
+        }
+      >
+        {errorModal && (
+          <Alert 
+            variant="error"
+            title="Erro ao adicionar aluno"
+            className="mb-6"
+          >
+            {errorModal}
+          </Alert>
+        )}
+        {isBloqueado && (
+          <Alert
+            variant="warning"
+            title="Limite Atingido!"
+            className="mb-6"
+          >
+            Não pode adicionar mais alunos no seu plano atual.{' '}
+            <a href="/planos" className="font-bold underline">Fazer Upgrade</a>
+          </Alert>
+        )}
+        {}
+        <div className="space-y-4">
+          <Input
+            label="Nome do Aluno"
+            icon={<User className="h-4 w-4" />}
+            type="text"
+            value={nome}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNome(e.target.value)}
+            placeholder="Nome completo do aluno"
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nome do Responsável"
+              icon={<User className="h-4 w-4" />}
+              type="text"
+              value={nomePai}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNomePai(e.target.value)}
+              placeholder="(Opcional)"
+            />
+            <Input
+              label="Email do Responsável"
+              icon={<Mail className="h-4 w-4" />}
+              type="email"
+              value={emailPai}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailPai(e.target.value)}
+              placeholder="Para envio de cobranças"
+              required
+            />
           </div>
-        </form>
-      </div>
-    </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Valor da Mensalidade"
+              icon={<CreditCard className="h-4 w-4" />}
+              type="number"
+              value={valor}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValor(Number(e.target.value))}
+              placeholder="Ex: 100.00"
+              required
+              min="0"
+              step="0.01"
+            />
+            <Input
+              label="Data de Vencimento"
+              icon={<Calendar className="h-4 w-4" />}
+              type="date"
+              value={vencimento}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVencimento(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              Status Inicial
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusInicial('pendente')}
+                className={cn(
+                  "flex-1 p-3 rounded-lg border transition-colors",
+                  statusInicial === 'pendente' 
+                    ? "bg-gray-800 border-dribla-green text-white" 
+                    : "border-gray-700 text-gray-400 hover:border-gray-600"
+                )}
+              >
+                <Badge className="w-full" variant="warning">Pendente</Badge>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusInicial('pago')}
+                className={cn(
+                  "flex-1 p-3 rounded-lg border transition-colors",
+                  statusInicial === 'pago'
+                    ? "bg-gray-800 border-dribla-green text-white"
+                    : "border-gray-700 text-gray-400 hover:border-gray-600"
+                )}
+              >
+                <Badge className="w-full" variant="success">Pago</Badge>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </form>
   );
 };
-
 export default ModalNovoAluno;
-

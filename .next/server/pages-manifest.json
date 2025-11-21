@@ -1,9 +1,14 @@
 {
   "/": "pages/index.html",
+  "/404": "pages/404.html",
   "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
   "/_error": "pages/_error.js",
-  "/api/cron/enviar_cobrancas": "pages/api/cron/enviar_cobrancas.js",
+  "/api/alunos/create": "pages/api/alunos/create.js",
+  "/api/cron/enviar-cobrancas": "pages/api/cron/enviar-cobrancas.js",
+  "/api/emails/enviar": "pages/api/emails/enviar.js",
+  "/api/escolinha/perfil": "pages/api/escolinha/perfil.js",
+  "/api/subscription/cancel": "pages/api/subscription/cancel.js",
   "/cadastro": "pages/cadastro.html",
   "/checkout": "pages/checkout.html",
   "/contato": "pages/contato.html",
@@ -11,6 +16,7 @@
   "/financeiro": "pages/financeiro.html",
   "/home-acao": "pages/home-acao.html",
   "/login": "pages/login.html",
+  "/perfil": "pages/perfil.html",
   "/planos": "pages/planos.html",
-  "/404": "pages/404.html"
+  "/status": "pages/status.html"
 }

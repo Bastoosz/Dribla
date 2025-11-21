@@ -1,0 +1,106 @@
+// components/ModalConfirmarExclusao.tsx.temp
+import React, { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { Loader2, AlertTriangle, User } from 'lucide-react';
+import type { Aluno } from '../types/aluno';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
+import { Alert } from './ui/Alert';
+
+interface ModalConfirmarExclusaoProps {
+  aluno: Aluno | null;
+  onClose: () => void;
+  onAlunoExcluido: () => void;
+}
+
+const ModalConfirmarExclusao: React.FC<ModalConfirmarExclusaoProps> = ({ aluno, onClose, onAlunoExcluido }) => {
+  const [loadingDelete, setLoadingDelete] = useState(false);
+  const [errorDelete, setErrorDelete] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    if (!aluno) return;
+
+    setLoadingDelete(true);
+    setErrorDelete(null);
+
+    try {
+      const { error } = await supabase
+        .from('alunos')
+        .delete()
+        .eq('id', aluno.id);
+
+      if (error) {
+        console.error("Erro ao excluir aluno:", error);
+        throw new Error("Não foi possível excluir o atleta. Tente novamente.");
+      }
+
+      setLoadingDelete(false);
+      onAlunoExcluido();
+
+    } catch (err: any) {
+      setErrorDelete(err.message);
+      setLoadingDelete(false);
+    }
+  };
+
+  if (!aluno) return null;
+
+  return (
+    <Modal 
+      isOpen={true}
+      onClose={onClose}
+      title="Confirmar Exclusão"
+      footer={
+        <>
+          <Button 
+            variant="ghost" 
+            onClick={onClose}
+            disabled={loadingDelete}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={handleConfirm} 
+            disabled={loadingDelete}
+          >
+            {loadingDelete ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Excluindo...
+              </>
+            ) : (
+              'Excluir'
+            )}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col items-center text-center mb-6">
+        <AlertTriangle className="w-10 h-10 text-red-500 mb-4" />
+        <p className="text-lg font-semibold text-white mb-2">
+          Tem certeza que deseja excluir este aluno?
+        </p>
+        <div className="flex items-center justify-center text-gray-400 gap-2 mb-4">
+          <User className="h-4 w-4" />
+          <p>{aluno.nome_aluno}</p>
+        </div>
+        <p className="text-sm text-gray-400">
+          Esta ação não pode ser desfeita. Todos os dados do aluno serão perdidos permanentemente.
+        </p>
+      </div>
+
+      {errorDelete && (
+        <Alert 
+          variant="error"
+          title="Erro ao excluir"
+          className="mt-4"
+        >
+          {errorDelete}
+        </Alert>
+      )}
+    </Modal>
+  );
+};
+
+export default ModalConfirmarExclusao;

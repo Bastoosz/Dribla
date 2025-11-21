@@ -1,0 +1,193 @@
+import React, { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Alert } from './ui/Alert';
+import { Loader2 } from 'lucide-react';
+import type { Aluno } from '../types/aluno';
+
+interface ModalEditarAlunoProps {
+  aluno: Aluno;
+  onClose: () => void;
+  onAlunoEditado: (alunoAtualizado: Aluno) => void;
+}
+
+export function ModalEditarAluno({ aluno, onClose, onAlunoEditado }: ModalEditarAlunoProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    nome: aluno.nome || '',
+    email: aluno.email || '',
+    telefone: aluno.telefone || '',
+    valor_mensalidade: aluno.valor_mensalidade?.toString() || '',
+    vencimento: aluno.vencimento?.toString() || '',
+    observacoes: aluno.observacoes || ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Validação básica
+      if (!formData.nome.trim()) {
+        throw new Error('Nome é obrigatório');
+      }
+
+      if (!formData.email.trim()) {
+        throw new Error('E-mail é obrigatório');
+      }
+
+      if (!formData.valor_mensalidade || isNaN(Number(formData.valor_mensalidade))) {
+        throw new Error('Valor da mensalidade inválido');
+      }
+
+      if (!formData.vencimento || isNaN(Number(formData.vencimento)) || 
+          Number(formData.vencimento) < 1 || Number(formData.vencimento) > 31) {
+        throw new Error('Dia de vencimento deve ser entre 1 e 31');
+      }
+
+      const { data, error: updateError } = await supabase
+        .from('alunos')
+        .update({
+          nome: formData.nome.trim(),
+          email: formData.email.trim(),
+          telefone: formData.telefone.trim(),
+          valor_mensalidade: Number(formData.valor_mensalidade),
+          vencimento: Number(formData.vencimento),
+          observacoes: formData.observacoes.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', aluno.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      
+      if (data) {
+        onAlunoEditado(data);
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao atualizar aluno');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Editar Aluno"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <Alert variant="error" title="Erro" className="mb-4">
+            {error}
+          </Alert>
+        )}
+
+        <Input
+          label="Nome"
+          name="nome"
+          value={formData.nome}
+          onChange={handleChange}
+          placeholder="Nome do aluno"
+          required
+        />
+
+        <Input
+          label="E-mail"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="email@exemplo.com"
+          required
+        />
+
+        <Input
+          label="Telefone"
+          name="telefone"
+          value={formData.telefone}
+          onChange={handleChange}
+          placeholder="(00) 00000-0000"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Valor da Mensalidade"
+            name="valor_mensalidade"
+            type="number"
+            value={formData.valor_mensalidade}
+            onChange={handleChange}
+            placeholder="0.00"
+            required
+          />
+
+          <Input
+            label="Dia do Vencimento"
+            name="vencimento"
+            type="number"
+            min="1"
+            max="31"
+            value={formData.vencimento}
+            onChange={handleChange}
+            placeholder="Dia"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-200">
+            Observações
+          </label>
+          <textarea
+            name="observacoes"
+            value={formData.observacoes}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dribla-green focus:border-transparent"
+            placeholder="Observações sobre o aluno..."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Salvando...
+              </span>
+            ) : (
+              'Salvar Alterações'
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

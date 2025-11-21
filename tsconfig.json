@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES2015",
     "lib": [
       "dom",
       "dom.iterable",
@@ -17,7 +17,6 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    // ADICIONE ESTA LINHA:
     "baseUrl": ".",
     "paths": {
       "@/components/*": [
@@ -28,6 +27,9 @@
       ],
       "@/styles/*": [
         "styles/*"
+      ],
+      "@/utils/*": [
+        "utils/*"
       ]
     },
     "plugins": [
