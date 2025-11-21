@@ -4,9 +4,12 @@ import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 export async function validateAuth(req: NextApiRequest, res: NextApiResponse) {
   const supabase = createPagesServerClient({ req, res });
   
+  // Tenta pegar a sessão dos cookies
   const { data: { session }, error } = await supabase.auth.getSession();
   
   if (error || !session) {
+    // Log para debug
+    console.error('Auth validation failed:', error || 'No session');
     return { authenticated: false, userId: null, error: 'Não autenticado' };
   }
   

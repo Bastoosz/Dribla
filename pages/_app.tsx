@@ -33,12 +33,6 @@ function MyApp({ Component, pageProps }: MyAppProps) {
         <link rel="shortcut icon" type="image/png" href="/favicon.png?v=2" />
         <link rel="apple-touch-icon" href="/favicon.png?v=2" />
         <link rel="canonical" href="https://dribla.vercel.app" />
-        
-        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="X-Frame-Options" content="DENY" />
-        <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
-        <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-        <meta httpEquiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
       </Head>
       <SessionContextProvider
         supabaseClient={supabaseClient}

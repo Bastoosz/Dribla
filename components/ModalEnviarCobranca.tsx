@@ -99,6 +99,7 @@ function ModalEnviarCobranca({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Importante: envia cookies de autenticação
         body: JSON.stringify({ 
           emails: emailsParaEnviar,
           treinadorId: user.id,
