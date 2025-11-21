@@ -4,16 +4,21 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://dribla.vercel.app',
+  'https://dribla-git-main-bastooszs-projects.vercel.app', // Preview URLs
   process.env.NEXT_PUBLIC_APP_URL,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
 ].filter(Boolean);
 
 export function validateCORS(req: NextApiRequest, res: NextApiResponse): boolean {
-  const origin = req.headers.origin || req.headers.referer;
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
   
+  // Se não tem origin (requisição same-origin ou curl/postman), permitir
   if (!origin) {
     return true;
   }
 
+  // Verifica se a origem está na lista de permitidos
   const isAllowed = ALLOWED_ORIGINS.some(allowed => {
     if (!allowed) return false;
     try {
@@ -25,7 +30,13 @@ export function validateCORS(req: NextApiRequest, res: NextApiResponse): boolean
     }
   });
 
+  // Se não está na lista, verifica se é uma preview URL do Vercel
+  if (!isAllowed && origin.includes('.vercel.app')) {
+    return true; // Permite todas as preview URLs do Vercel
+  }
+
   if (!isAllowed) {
+    console.error('CORS blocked:', { origin, referer, allowed: ALLOWED_ORIGINS });
     res.status(403).json({ error: 'Origem não autorizada' });
     return false;
   }

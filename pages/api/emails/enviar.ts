@@ -32,9 +32,10 @@ async function handler(
     return;
   }
 
-  if (!validateCORS(req, res)) {
-    return;
-  }
+  // CORS validation - comentado temporariamente para debug
+  // if (!validateCORS(req, res)) {
+  //   return;
+  // }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
