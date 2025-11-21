@@ -90,6 +90,10 @@ async function handler(
     const validatedEmails = emails.map(email => validateEmailData(email));
     
     const emailFrom = 'onboarding@resend.dev';
+    
+    // MODO DEMO: Simular envio de emails para demonstração
+    const isDemoMode = process.env.DEMO_MODE === 'true' || !process.env.RESEND_API_KEY;
+    
     const resultados = await Promise.allSettled(
       validatedEmails.map(async (emailData) => {
         if (!emailData.emailResponsavel) {
@@ -100,6 +104,26 @@ async function handler(
         const safeMessage = sanitizeHtml(emailData.mensagem);
         const safeSchoolName = sanitizeHtml(nomeEscolinha);
 
+        if (isDemoMode) {
+          // SIMULAÇÃO: Email enviado com sucesso (para demo/portfólio)
+          logger.info('📧 [DEMO] Email simulado', {
+            para: emailData.emailResponsavel,
+            aluno: safeName,
+            escolinha: safeSchoolName
+          });
+          
+          // Simular delay de envio real
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          return { 
+            alunoId: emailData.alunoId, 
+            success: true, 
+            data: { id: `demo_${Date.now()}_${emailData.alunoId}` },
+            mode: 'demo'
+          };
+        }
+
+        // Produção: Envio real via Resend
         const { data, error } = await resend.emails.send({
           from: `${safeSchoolName} <${emailFrom}>`,
           to: [emailData.emailResponsavel],
@@ -420,10 +444,11 @@ async function handler(
 
     return res.status(200).json({
       success: true,
-      message: `${sucesso} email(s) enviado(s) com sucesso${falhas > 0 ? `, ${falhas} falha(s)` : ''}`,
+      message: `${sucesso} email(s) enviado(s) com sucesso${falhas > 0 ? `, ${falhas} falha(s)` : ''}${isDemoMode ? ' 🎭 [MODO DEMONSTRAÇÃO]' : ''}`,
       enviados: sucesso,
       falhas: falhas,
-      erros: falhasDetalhadas, // Incluir erros para debug
+      erros: falhasDetalhadas,
+      demoMode: isDemoMode,
       limiteDiarioRestante: dailyLimit.remaining,
     });
   } catch (error: any) {

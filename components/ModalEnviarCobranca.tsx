@@ -110,14 +110,21 @@ function ModalEnviarCobranca({
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar emails');
       }
-      setSuccess(data.message || `${alunosSelecionados.length} email(s) enviado(s) com sucesso!`);
+      
+      // Mostrar badge de modo demo se ativado
+      let mensagemSucesso = data.message || `${alunosSelecionados.length} email(s) enviado(s) com sucesso!`;
+      if (data.demoMode) {
+        mensagemSucesso += ' (Os emails foram simulados para demonstração. Em produção, seriam enviados via Resend API.)';
+      }
+      
+      setSuccess(mensagemSucesso);
       setTimeout(() => {
         setSuccess('');
         setAlunosSelecionados([]);
         setEmailsPersonalizados([]);
         setAlunosPersonalizadosAbertos([]);
         onClose();
-      }, 3000);
+      }, 5000); // 5s para mensagem demo
     } catch (err: any) {
       console.error('Erro ao enviar emails:', err);
       setError('Erro ao enviar emails. Tente novamente.');
