@@ -95,7 +95,7 @@ function HomeAcao() {
         const atrasadosCount = atrasadosPromise.count ?? 0;
         let atrasadosValorTotal = 0;
         if (atrasadosPromise.data) {
-           atrasadosValorTotal = atrasadosPromise.data.reduce((sum, aluno) => sum + (aluno.valor_mensalidade || 0), 0);
+           atrasadosValorTotal = atrasadosPromise.data.reduce((sum: number, aluno: any) => sum + (aluno.valor_mensalidade || 0), 0);
         }
         const proximosCount = proximosPromise.count ?? 0;
         const pagosCount = pagosPromise.count ?? 0;
@@ -105,8 +105,8 @@ function HomeAcao() {
           .from('alunos')
           .select('valor_mensalidade, status_mensalidade')
           .eq('id_treinador', user.id);
-        const receitaTotal = todosAlunos?.reduce((sum, aluno) => sum + (aluno.valor_mensalidade || 0), 0) ?? 0;
-        const receitaPendente = todosAlunos?.reduce((sum, aluno) => 
+        const receitaTotal = todosAlunos?.reduce((sum: number, aluno: any) => sum + (aluno.valor_mensalidade || 0), 0) ?? 0;
+        const receitaPendente = todosAlunos?.reduce((sum: number, aluno: any) => 
           aluno.status_mensalidade === 'pendente' ? sum + (aluno.valor_mensalidade || 0) : sum, 0) ?? 0;
         setData({
           atrasadosCount,
